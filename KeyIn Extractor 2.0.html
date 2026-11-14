@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jira Key Extractor // Gaming Edition</title>
+    <!-- Add SheetJS CDN to read Excel files & hyperlinks -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: #161b22;
+            --accent-blue: #00f0ff;
+            --accent-green: #00ff66;
+            --accent-purple: #ab47bc;
+            --text-main: #e6edf3;
+            --text-muted: #8b949e;
+            --border-glow: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(0, 255, 102, 0.05) 0%, transparent 40%);
+            color: var(--text-main);
+            max-width: 850px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent-blue);
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--accent-blue);
+            padding-bottom: 0.5rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+            color: var(--accent-blue);
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .guide-box {
+            background: rgba(171, 71, 188, 0.1);
+            border: 1px solid var(--accent-purple);
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+
+        .guide-box strong {
+            color: var(--accent-purple);
+        }
+
+        .file-upload-zone {
+            border: 2px dashed var(--accent-blue);
+            border-radius: 6px;
+            padding: 1rem;
+            text-align: center;
+            background: rgba(0, 240, 255, 0.02);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 1rem;
+        }
+
+        .file-upload-zone:hover {
+            background: rgba(0, 240, 255, 0.08);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .file-upload-zone p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: var(--text-main);
+            padding: 0.75rem;
+            font-family: 'Courier New', Courier, monospace;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        input[readonly] {
+            background-color: #161b22;
+            color: var(--text-muted);
+            border-color: #21262d;
+            cursor: not-allowed;
+        }
+
+        .btn-main {
+            width: 100%;
+            padding: 0.85rem;
+            background: linear-gradient(135deg, #0052CC 0%, #00f0ff 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-main:hover {
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.6);
+        }
+
+        .btn-copy {
+            background: transparent;
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            margin-top: 0.75rem;
+        }
+
+        .btn-copy:hover {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        #link-output a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            display: block;
+            padding: 0.3rem 0;
+            font-family: monospace;
+        }
+
+        .empty-msg { color: var(--text-muted); font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <h2>⚡ Jira Key Extractor</h2>
+    
+    <div class="card">
+        <label for="domain">Target Jira Domain</label>
+        <input type="text" id="domain" value="https://novaquark.atlassian.net" readonly>
+    </div>
+
+    <div class="card">
+        <label>Input Source</label>
+        
+        <div class="guide-box">
+            <strong>💡 Supported formats:</strong> Upload <code>.xlsx</code>, <code>.xls</code>, <code>.csv</code>, or <code>.txt</code> files (Hyperlinks inside Excel files will be extracted automatically).
+        </div>
+
+        <div class="file-upload-zone" onclick="document.getElementById('file-input').click()">
+            <p>📁 <strong>Click to Upload Excel / CSV File</strong> or Drag & Drop here</p>
+            <p id="file-name" style="font-size: 0.8rem; color: var(--accent-green); margin-top: 0.4rem;"></p>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv,.txt" onchange="handleFileUpload(event)">
+
+        <label for="input" style="font-size: 0.75rem; color: var(--text-muted);">OR PASTE RAW TEXT / CONSOLE LOGS BELOW:</label>
+        <textarea id="input" placeholder="Paste ticket list or raw text here..."></textarea>
+    </div>
+    
+    <button class="btn-main" onclick="generateJQLAndURLs()">Extract Keys & Build Links</button>
+
+    <div class="card">
+        <label>Generated Key IN JQL</label>
+        <textarea id="jql-output" readonly placeholder="Output JQL will appear here..."></textarea>
+        <button class="btn-copy" onclick="copyToClipboard('jql-output')">Copy Key IN JQL</button>
+    </div>
+
+    <div class="card">
+        <label>Generated Key IN Link</label>
+        <input type="text" id="jql-url-output" readonly placeholder="Output URL will appear here...">
+        <button class="btn-copy" onclick="copyToClipboard('jql-url-output')">Copy Key IN Link</button>
+    </div>
+
+    <div class="card">
+        <label>Individual Ticket Links</label>
+        <div id="link-output"><span class="empty-msg">No extracted issue links yet.</span></div>
+    </div>
+
+    <script>
+        const DOMAIN = "https://novaquark.atlassian.net";
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('file-name').textContent = `Loaded File: ${file.name}`;
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            // Check if it's an Excel file (.xlsx / .xls)
+            if (ext === 'xlsx' || ext === 'xls') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellHTML: true, cellFormula: true });
+                    
+                    let extractedStrings = [];
+
+                    workbook.SheetNames.forEach(sheetName => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        for (let cellRef in worksheet) {
+                            if (cellRef[0] === '!') continue;
+                            const cell = worksheet[cellRef];
+                            
+                            // 1. Get plain cell text
+                            if (cell.v) extractedStrings.push(String(cell.v));
+                            
+                            // 2. Get hyperlink target URL (e.g. HYPERLINK("https://domain/browse/KEY-123"))
+                            if (cell.l && cell.l.Target) {
+                                extractedStrings.push(cell.l.Target);
+                            }
+
+                            // 3. Get formulas containing URLs
+                            if (cell.f) {
+                                extractedStrings.push(cell.f);
+                            }
+                        }
+                    });
+
+                    document.getElementById('input').value = extractedStrings.join("\n");
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                // Standard plain text / CSV file handling
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('input').value = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function generateJQLAndURLs() {
+            let text = document.getElementById('input').value;
+            
+            try {
+                text = decodeURIComponent(text);
+            } catch (e) {}
+
+            const keyRegex = /\b[A-Z]+-\d+\b/g;
+            const matches = text.match(keyRegex);
+            
+            if (matches && matches.length > 0) {
+                const uniqueKeys = [...new Set(matches)];
+                const jql = `key IN (${uniqueKeys.join(', ')})`;
+                
+                document.getElementById('jql-output').value = jql;
+                document.getElementById('jql-url-output').value = `${DOMAIN}/issues/?jql=${encodeURIComponent(jql)}`;
+
+                const linkContainer = document.getElementById('link-output');
+                linkContainer.innerHTML = '';
+                uniqueKeys.forEach(key => {
+                    const href = `${DOMAIN}/browse/${key}`;
+                    const anchor = document.createElement('a');
+                    anchor.href = href;
+                    anchor.target = "_blank";
+                    anchor.textContent = `> ${key} — ${href}`;
+                    linkContainer.appendChild(anchor);
+                });
+            } 
+            else {
+                document.getElementById('jql-output').value = "No Jira keys found in the file or text.";
+                document.getElementById('jql-url-output').value = "";
+                document.getElementById('link-output').innerHTML = "<span class='empty-msg'>No links available.</span>";
+            }
+        }
+
+        function copyToClipboard(elementId) {
+            const target = document.getElementById(elementId);
+            if (!target.value) return;
+            target.select();
+            document.execCommand('copy');
+        }
+    </script>
+</body>
+</html>
